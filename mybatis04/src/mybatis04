@@ -1,0 +1,110 @@
+## 缓存
+---
+### 一级缓存
+1. 初体验:
+   ```
+   @Test
+   public void getUserById() {
+       UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+       User user1 = mapper.getUserById(1);
+       System.out.println(user1);
+       User user2 = mapper.getUserById(1);
+       System.out.println(user2);
+       System.out.println(user1==user2);
+   }
+   ```
+      * 运行结果:
+      ![firstCache](https://images.cnblogs.com/cnblogs_com/ann-zhgy/1558457/o_first-cache.png)
+   * mybatis的一级缓存是自动开启的, 效果就是再次使用数据时, 如果缓存有效, 就会从缓存中取数据, 不会查sql
+   * 一级缓存时属于sqlSession对象的, 即: 每个sqlSession都有自己的一句缓存
+2. 一级缓存无效的四种情况:
+   1.  SqlSession不同
+   2.  第一次查询或查询条件不同, 即: 缓存中没有这个对象
+   3.  sqlSession关闭, 用新的sqlSession再查
+   4.  两次查询之间执行了增删改操作
+
+### 二级缓存
+1. 开启二级缓存
+   1. 开启全局配置  
+   ```<setting name="cacheEnabled" value="true"/>```
+   2. 开启mapper文件的配置  
+   ```<cache eviction="" flushInterval="" readOnly="" size="" type="" blocking="" />```
+      * eviction: 缓存回收策略
+        1. LRU(默认值): 最近最少使用
+        2. FIFO: 先进先出
+        3. SOFT: 软引用: 移除基于垃圾回收器和软引用规则的对象
+        4. WEAK: 弱引用: 更积极地移除基于垃圾回收器和弱引用规则的对象
+      * flushInterval: 缓存刷新时间: 多久清空一次. 默认不清空
+      * readOnly: 是否只读
+        * true: 只读. 会直接返回对象引用, 速度快, 不安全
+        * false(默认值): 会通过序列化和反序列化克隆对象返回. 速度慢, 安全
+      * size: 缓存存放多少元素
+      * type: 自定义缓存. 实现Cache接口即可
+      * blocking:
+2. 运行效果:
+   ```
+   @Test
+   public void getUserByIdSecondCache() {
+       UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+       User user1 = mapper.getUserById(1);
+       System.out.println(user1);
+       sqlSession.close();
+       sqlSession = factory.openSession();
+       mapper = sqlSession.getMapper(UserMapper.class);
+       User user2 = mapper.getUserById(1);
+       System.out.println(user2);
+       System.out.println(user1==user2);
+   }
+   ```
+   * 运行结果:
+     ![second-cache](https://images.cnblogs.com/cnblogs_com/ann-zhgy/1558457/o_second-cache.png)
+3. 注意:
+   1. 只有在sqlSession提交或关闭之后对象才会进入二级缓存
+   2. 使用缓存时, pojo(bean)类要实现序列化接口(Serializable)
+   3. 开发中要避免使用二级缓存, 因为其带来的危害要大于好处
+## 补充
+1. 内置参数:
+   1. _parameter: 代表传进来的参数. 如果是单一的参数, 就代表单一参数, 如果是对象或map, 就代表map
+   2. _databaseId: 代表数据库的id(别名), 但是需要核心配置文件中配置了databaseIdProvider标签才会有效
+      ```
+      <databaseIdProvider type="DB_VENDOR">
+          <!-- 为不同的数据库厂商起别名 -->
+          <property name="MySQL" value="mysql"/>
+          <property name="Oracle" value="oracle"/>
+          <property name="SQL Server" value="sqlServer"/>
+      </databaseIdProvider>
+      ```
+2. pageHelper插件: 详情查询[链接](https://github.com/pagehelper/Mybatis-PageHelper/blob/master/wikis/zh/HowToUse.md)
+   1. 导包(maven依赖):
+      ```
+      <!-- https://mvnrepository.com/artifact/com.github.pagehelper/pagehelper -->
+      <dependency>
+          <groupId>com.github.pagehelper</groupId>
+          <artifactId>pagehelper</artifactId>
+          <version>5.1.10</version>
+      </dependency>
+      ```
+   2. 再核心配置文件中配置拦截器
+      ```
+      <plugins>
+          <plugin interceptor="com.github.pagehelper.PageInterceptor"/>
+      </plugins>
+      ```
+      * 需要配在environments标签上面
+   3. 使用(接口方式)
+      ```
+      @Test
+      public void getAll() {
+          UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+          PageHelper.startPage(2, 5);
+          List<User> users = mapper.getAll();
+          users.forEach(System.out::println);
+      }
+      ```
+      * 在查询之前调用PageHelper.startPage(第几页, 每页几条), 且为了安全起见, 这个方法和查询语句要紧挨着
+      * sql语句后面不能写分号
+      * PageHelper.startPage(2, 5)会返回一个包含了分页的各种信息的对象, 都很简单, 这里不做演示
+
+3. 批量执行器
+   1. 在核心配置文件中进行全局配置, 但是这样的代价太大了, 所以不用这种方法
+   2. 通过```factory.openSession(ExecutorType.BATCH)```来获取

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.ann.mapper.UserMapper">
+    <sql id="query">
+        select *
+        from t_user
+    </sql>
+    <insert id="addUser" parameterType="cn.ann.bean.User">
+        <selectKey resultType="Integer" keyColumn="id" order="AFTER" keyProperty="id">
+            select last_insert_id();
+        </selectKey>
+        insert into t_user(id, name, age) values (#{id},#{name},#{age});
+    </insert>
+    <update id="modifyUserById" parameterType="cn.ann.bean.User">
+        update t_user
+        <set>
+            <if test="name!=null">
+                name = #{name},
+            </if>
+            <if test="age!=null">
+                age = #{age},
+            </if>
+        </set>
+        where id = #{id};
+    </update>
+    <delete id="deleteUserById" parameterType="Integer">
+        delete
+        from t_user
+        where id = #{id};
+    </delete>
+    <select id="getUsers" resultType="cn.ann.bean.User">
+        select *
+        from t_user;
+    </select>
+    <select id="getUserById" parameterType="Integer" resultType="cn.ann.bean.User">
+        select *
+        from t_user
+        where id = #{id};
+    </select>
+    <select id="getUsersByName" parameterType="String" resultType="cn.ann.bean.User">
+        <!-- select * from t_user where name like '%'#{name}'%';
+        select * from t_user where name like '%${name}%';
+        select * from t_user where name like #{name}; -->
+        <bind name="_name" value="'%' + name + '%'"/>
+        select * from t_user where name like #{_name};
+    </select>
+    <select id="getUserCount" resultType="Integer">
+        select count(1)
+        from t_user;
+    </select>
+    <select id="getUserByCondition" resultType="User" parameterType="QueryVo">
+        select * from t_user
+        <trim prefix="where " prefixOverrides="and" suffix="" suffixOverrides="">
+            <if test="user.name != null">
+                and name = #{user.name}
+            </if>
+            <if test="user.age != null">
+                and age = #{user.age}
+            </if>
+        </trim>
+    </select>
+<!--
+    <select id="getUserByCondition" resultType="User" parameterType="QueryVo">
+        select * from t_user
+        <where>
+            &lt;!&ndash;<if test="user.name != null">
+                and name = #{user.name}
+            </if>
+            <if test="user.age != null">
+                and age = #{user.age}
+            </if>&ndash;&gt;
+            <choose>
+                <when test="user.name != null">
+                    name = #{user.name}
+                </when>
+                <when test="user.age != null">
+                    age = #{user.age}
+                </when>
+                <otherwise>
+                    1=1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+-->
+    <select id="getUsersByIdsVo" parameterType="QueryVo" resultType="User">
+        <include refid="query"/>
+        <where>
+            <foreach collection="ids" open="id in (" close=");" separator=", " item="id">
+                #{id}
+            </foreach>
+        </where>
+    </select>
+    <select id="getUsersByIds" parameterType="Integer" resultType="User">
+        <include refid="query"/>
+        <where>
+            <foreach collection="array" open="id in (" close=");" separator=", " item="id">
+                #{id}
+            </foreach>
+        </where>
+    </select>
+    <select id="getUsersByIdList" parameterType="Integer" resultType="User">
+        <include refid="query"/>
+        <where>
+            <foreach collection="list" open="id in (" close=");" separator=", " item="id">
+                #{id}
+            </foreach>
+        </where>
+    </select>
+</mapper>

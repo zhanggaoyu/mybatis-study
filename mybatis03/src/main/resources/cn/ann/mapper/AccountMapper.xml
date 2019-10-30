@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.ann.mapper.AccountMapper">
+    <resultMap id="accountMap" type="Account">
+        <association property="user" fetchType="eager" column="user_id"
+                     select="cn.ann.mapper.UserMapper.getUserById"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="accountMap">
+    </select>
+
+    <resultMap id="accountAllMap" type="Account">
+        <id property="id" column="aid"/>
+        <result property="accountName" column="account_name"/>
+        <result property="accountMoney" column="account_money"/>
+        <association property="user">
+            <id property="id" column="id"/>
+            <result property="name" column="name"/>
+            <result property="age" column="age"/>
+        </association>
+    </resultMap>
+    <select id="getAccountById" resultMap="accountAllMap" parameterType="Integer">
+        select
+               a.id as aid,
+               a.account_name,
+               a.account_money,
+               u.*
+        from t_account a right join t_user u
+            on a.user_id = u.id
+        where a.id = #{id}
+    </select>
+
+    <select id="getAccountsByUserId" parameterType="Integer" resultType="account">
+        select * from t_account where user_id = #{userId}
+    </select>
+
+</mapper>
